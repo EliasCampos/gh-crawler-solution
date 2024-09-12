@@ -25,16 +25,16 @@ class GitHubScraper:
             return value in cls._value2member_map_
 
     def __init__(self, proxies):
-        self.proxies = [
-            f'http://{proxy}'
-            for proxy in proxies
-        ]
+        self.proxies = [f'http://{proxy}' for proxy in proxies]
 
         self.session = requests.Session()
         self.session.headers.update({
             'Host': 'github.com',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.6 Safari/605.1.15',
+            'User-Agent': (
+                'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)'
+                ' Version/17.6 Safari/605.1.15'
+            ),
         })
 
         user_session = os.environ.get('GITHUB_USER_SESSION')
@@ -44,7 +44,7 @@ class GitHubScraper:
                 'user_session': user_session,
             })
 
-    def crawl_search_results(self, search_terms, search_type):
+    def crawl_search_page(self, search_terms, search_type):
         if not self.SearchType.is_valid_value(value=search_type):
             raise ValueError(f'Unsupported search type: {search_type}')
 
@@ -60,19 +60,74 @@ class GitHubScraper:
             logger.error('Failed to request github search page (status %s)', response.status_code)
             return []
 
-        return self._parse_response_data_for_search_results(data=response.text)
+        results = self._parse_response_data_for_search_results(data=response.text)
+        if search_type == self.SearchType.REPOSITORIES.value:
+            self._handle_repositories_search_results(results=results)
+        else:
+            self._handle_common_search_results(results=results)
+        return results
 
-    def _parse_response_data_for_search_results(self, data):
+    def crawl_repository_page(self, url):
+        response = self._get(url)
+        if not response.ok:
+            logger.error('Failed to request github repository page (status %s)', response.status_code)
+            return None
+
+        return self._parse_response_data_for_repository_results(data=response.text)
+
+    @staticmethod
+    def _parse_response_data_for_search_results(data):
         soup = BeautifulSoup(data, 'html.parser')
         results = [
             {
-                "url": urljoin(self.BASE_URL, element.get('href')),
+                "url": element.get('href'),
             }
             for element in soup.css.select('a:has(.search-match)')
         ]
         return results
 
-    def _get(self, url, params):
+    @staticmethod
+    def _parse_response_data_for_repository_results(data):
+        soup = BeautifulSoup(data, 'html.parser')
+        owner_element = (
+            soup.css.select_one('span.author')
+            or soup.css.select_one('nav[role="navigation"] ul li:first-child a')
+        )
+
+        language_stats = {}
+        for element in soup.css.select('div.Layout-sidebar li > a.Link--secondary'):
+            spans = element.find_all('span')
+            try:
+                name = spans[0].text
+                value = spans[1].text.replace('%', '')
+            except IndexError:
+                continue
+            else:
+                try:
+                    value = float(value)
+                except ValueError:
+                    value = None
+                language_stats[name] = value
+
+        return {
+            'owner': owner_element.text.strip() if owner_element else None,
+            'language_stats': language_stats,
+        }
+
+    def _handle_repositories_search_results(self, results):
+        for result in results:
+            url = result['url']
+            extra = self.crawl_repository_page(url)
+            result.update({
+                'extra': extra,
+                'url': urljoin(self.BASE_URL, url)
+            })
+
+    def _handle_common_search_results(self, results):
+        for result in results:
+            result['url'] = urljoin(self.BASE_URL, result['url'])
+
+    def _get(self, url, params=None):
         absolute_url = urljoin(self.BASE_URL, url)
         if self.proxies:
             proxy = random.choice(self.proxies)
@@ -82,14 +137,3 @@ class GitHubScraper:
 
         response = self.session.get(absolute_url, params=params, proxies=proxies)
         return response
-
-
-def main():
-    result = GitHubScraper(proxies=["20.115.83.26:8001"]).crawl_search_results(
-        search_terms=['openstack', 'css'], search_type='wikis'
-    )
-    print(result)
-
-
-if __name__ == '__main__':
-    main()
