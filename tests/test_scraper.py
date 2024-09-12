@@ -1,4 +1,5 @@
 import pytest
+from http import HTTPStatus
 
 from scraper import GitHubScraper
 
@@ -71,3 +72,19 @@ class TestGitHubScraper:
                 search_type='invalid',
             )
         assert str(exc_info.value) == 'Unsupported search type: invalid'
+
+    def test_crawl_search_results_response_error(self, requests_mock):
+        requests_mock.get(
+            'https://github.com/search',
+            status_code=HTTPStatus.TOO_MANY_REQUESTS.value,
+        )
+
+        scraper = GitHubScraper(proxies=[])
+
+        results = scraper.crawl_search_page(
+            search_terms=[
+                'django',
+            ],
+            search_type=GitHubScraper.SearchType.WIKIS.value,
+        )
+        assert not results
