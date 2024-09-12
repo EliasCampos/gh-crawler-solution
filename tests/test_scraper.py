@@ -15,6 +15,6 @@ class TestGitHubScraper:
             'openstack',
             'nova',
             'css',
-        ])
+        ], search_type='repositories')
         assert len(results) == 10
         assert results[0] == {"url": "https://github.com/openstack/nova"}

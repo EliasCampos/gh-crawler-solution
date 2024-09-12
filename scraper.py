@@ -1,3 +1,4 @@
+import enum
 import os
 import logging
 
@@ -13,6 +14,15 @@ logger = logging.getLogger(__name__)
 
 class GitHubScraper:
     BASE_URL = 'https://github.com/'
+
+    class SearchType(enum.Enum):
+        REPOSITORIES = 'repositories'
+        ISSUES = 'issues'
+        WIKIS = 'wikis'
+
+        @classmethod
+        def is_valid_value(cls, value):
+            return value in cls._value2member_map_
 
     def __init__(self, proxies):
         self.proxies = [
@@ -34,13 +44,16 @@ class GitHubScraper:
                 'user_session': user_session,
             })
 
-    def crawl_search_results(self, search_terms):
+    def crawl_search_results(self, search_terms, search_type):
+        if not self.SearchType.is_valid_value(value=search_type):
+            raise ValueError(f'Unsupported search type: {search_type}')
+
         search_query = ' OR '.join(search_terms)
         response = self._get(
             url='search',
             params={
                 'q': search_query,
-                'type': 'repositories',
+                'type': search_type,
             }
         )
         if not response.ok:
@@ -72,7 +85,9 @@ class GitHubScraper:
 
 
 def main():
-    result = GitHubScraper(proxies=["20.115.83.26:8001"]).crawl_search_results(search_terms=['openstack', 'css'])
+    result = GitHubScraper(proxies=["20.115.83.26:8001"]).crawl_search_results(
+        search_terms=['openstack', 'css'], search_type='wikis'
+    )
     print(result)
 
 
