@@ -2,7 +2,7 @@ import os
 import logging
 
 import random
-from urllib.parse import urljoin, quote_plus
+from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
 import requests
@@ -72,7 +72,7 @@ class GitHubScraper:
 
 
 def main():
-    result = GitHubScraper(proxies=[]).crawl_search_results(search_terms=['openstack', 'css'])
+    result = GitHubScraper(proxies=["20.115.83.26:8001"]).crawl_search_results(search_terms=['openstack', 'css'])
     print(result)
 
 
