@@ -1,8 +1,10 @@
+from concurrent.futures import ThreadPoolExecutor
 import enum
 import os
 import logging
 
 import random
+from operator import itemgetter
 from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
@@ -25,7 +27,7 @@ class GitHubScraper:
             return value in cls._value2member_map_
 
     def __init__(self, proxies):
-        self.proxies = [f'http://{proxy}' for proxy in proxies]
+        self.proxies = proxies
 
         self.session = requests.Session()
         self.session.headers.update({
@@ -67,13 +69,13 @@ class GitHubScraper:
             self._handle_common_search_results(results=results)
         return results
 
-    def crawl_repository_page(self, url):
+    def fetch_repository_page(self, url):
         response = self._get(url)
         if not response.ok:
             logger.error('Failed to request github repository page (status %s)', response.status_code)
             return None
 
-        return self._parse_response_data_for_repository_results(data=response.text)
+        return response.text
 
     @staticmethod
     def _parse_response_data_for_search_results(data):
@@ -115,9 +117,18 @@ class GitHubScraper:
         }
 
     def _handle_repositories_search_results(self, results):
-        for result in results:
+        repository_urls = list(map(itemgetter('url'), results))
+
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            repository_pages = executor.map(self.fetch_repository_page, repository_urls)
+
+        for result, repository_page in zip(results, repository_pages):
+            if repository_page:
+                extra = self._parse_response_data_for_repository_results(data=repository_page)
+            else:
+                extra = None
+
             url = result['url']
-            extra = self.crawl_repository_page(url)
             result.update({
                 'extra': extra,
                 'url': urljoin(self.BASE_URL, url)
