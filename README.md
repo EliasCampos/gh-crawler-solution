@@ -21,10 +21,16 @@ Install the required packages:
 pip install -r requirements.txt
 ```
 
+#### Installing the crawler
+Install the crawler to be able to run it from the command line:
+```bash
+pip install -e .
+```
+
 #### Running the crawler
 To run the crawler, execute the following command:
 ```bash
-python main.py example/config.json
+github_crawler example/config.json
 ```
 Replace `example/config.json` with the path to the actual configuration file.
 The configuration file should be a JSON file with the following structure:

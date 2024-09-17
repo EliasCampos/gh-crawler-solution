@@ -3,7 +3,7 @@ import json
 import pathlib
 import sys
 
-from scraper import GitHubScraper
+from github_crawler.scraper import GitHubScraper
 
 
 def run_github_search_crawler(args=None):
@@ -23,10 +23,6 @@ def run_github_search_crawler(args=None):
     return scraper.crawl_search_page(search_terms=keywords, search_type=search_type)
 
 
-def main():
+def run_github_search_crawler_from_command_line():
     crawl_results = run_github_search_crawler()
     json.dump(crawl_results, sys.stdout, indent=4)
-
-
-if __name__ == '__main__':
-    main()

@@ -1,7 +1,7 @@
 import pytest
 from http import HTTPStatus
 
-from scraper import GitHubScraper
+from github_crawler.scraper import GitHubScraper
 
 
 class TestGitHubScraper:

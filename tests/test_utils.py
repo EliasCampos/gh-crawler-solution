@@ -1,8 +1,8 @@
 import pytest
 import json
 
-from main import run_github_search_crawler
-from scraper import GitHubScraper
+from github_crawler.utils import run_github_search_crawler
+from github_crawler.scraper import GitHubScraper
 
 
 @pytest.fixture
