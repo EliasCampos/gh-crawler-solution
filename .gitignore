@@ -6,3 +6,5 @@ venv/
 .venv/
 
 .coverage
+
+github_crawler.egg-info/*

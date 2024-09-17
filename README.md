@@ -30,7 +30,7 @@ pip install -e .
 #### Running the crawler
 To run the crawler, execute the following command:
 ```bash
-github_crawler example/config.json
+python -m github_crawler example/config.json
 ```
 Replace `example/config.json` with the path to the actual configuration file.
 The configuration file should be a JSON file with the following structure:
