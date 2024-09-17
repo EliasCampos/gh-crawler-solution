@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 class GitHubScraper:
     BASE_URL = 'https://github.com/'
+    REPOSITORIES_CRAWLING_WORKERS_NUMBER = 10  # corresponding to the number of search search_results on a page
 
     class SearchType(enum.Enum):
         REPOSITORIES = 'repositories'
@@ -67,9 +68,9 @@ class GitHubScraper:
 
         results = self._parse_response_data_for_search_results(data=response.text)
         if search_type == self.SearchType.REPOSITORIES.value:
-            self._handle_repositories_search_results(results=results)
+            results = self._handle_repositories_search_results(search_results=results)
         else:
-            self._handle_common_search_results(results=results)
+            results = self._handle_common_search_results(search_results=results)
         return results
 
     def fetch_repository_page(self, url):
@@ -119,27 +120,31 @@ class GitHubScraper:
             'language_stats': language_stats,
         }
 
-    def _handle_repositories_search_results(self, results):
-        repository_urls = list(map(itemgetter('url'), results))
+    def _handle_repositories_search_results(self, search_results):
+        repository_urls = list(map(itemgetter('url'), search_results))
 
-        with ThreadPoolExecutor(max_workers=10) as executor:
+        with ThreadPoolExecutor(max_workers=self.REPOSITORIES_CRAWLING_WORKERS_NUMBER) as executor:
             repository_pages = executor.map(self.fetch_repository_page, repository_urls)
 
-        for result, repository_page in zip(results, repository_pages):
+        results = []
+        for url, repository_page in zip(repository_urls, repository_pages):
             if repository_page:
                 extra = self._parse_response_data_for_repository_results(data=repository_page)
             else:
                 extra = None
 
-            url = result['url']
-            result.update({
+            results.append({
+                'url': urljoin(self.BASE_URL, url),
                 'extra': extra,
-                'url': urljoin(self.BASE_URL, url)
             })
 
-    def _handle_common_search_results(self, results):
-        for result in results:
-            result['url'] = urljoin(self.BASE_URL, result['url'])
+        return results
+
+    def _handle_common_search_results(self, search_results):
+        return [
+            {'url': urljoin(self.BASE_URL, search_result['url'])}
+            for search_result in search_results
+        ]
 
     def _get(self, url, params=None):
         absolute_url = urljoin(self.BASE_URL, url)
