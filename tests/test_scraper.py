@@ -9,7 +9,7 @@ class TestGitHubScraper:
     @pytest.mark.vcr
     def test_crawl_search_results_issues(self):
         scraper = GitHubScraper(proxies=[
-            "148.72.140.24:30127",
+            "4.234.78.115:8080",
         ])
 
         results = scraper.crawl_search_page(
@@ -22,17 +22,15 @@ class TestGitHubScraper:
         )
         assert len(results) == 10
         assert results[0] == {
-            "url": "https://github.com/ferdiunal/nova-settings/issues/3"
+            "url": "https://github.com/canonical/stsstack-bundles/issues/229"
         }
         assert results[1] == {
-            "url": "https://github.com/canonical/stsstack-bundles/issues/229"
+            "url": "https://github.com/openstack-exporter/openstack-exporter/issues/395"
         }
 
     @pytest.mark.vcr
     def test_crawl_search_results_repositories(self):
-        scraper = GitHubScraper(proxies=[
-            "148.72.140.24:30127",
-        ])
+        scraper = GitHubScraper(proxies=[])
 
         results = scraper.crawl_search_page(
             search_terms=[

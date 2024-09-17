@@ -8,6 +8,7 @@ from operator import itemgetter
 from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
+import certifi
 import requests
 
 
@@ -49,6 +50,8 @@ class GitHubScraper:
     def crawl_search_page(self, search_terms, search_type):
         if not self.SearchType.is_valid_value(value=search_type):
             raise ValueError(f'Unsupported search type: {search_type}')
+
+        self._set_random_proxy()
 
         search_query = ' OR '.join(search_terms)
         response = self._get(
@@ -140,11 +143,15 @@ class GitHubScraper:
 
     def _get(self, url, params=None):
         absolute_url = urljoin(self.BASE_URL, url)
+
+        response = self.session.get(absolute_url, params=params, verify=certifi.where())
+        return response
+
+    def _set_random_proxy(self):
         if self.proxies:
             proxy = random.choice(self.proxies)
-            proxies = {'http': proxy}
-        else:
-            proxies = None
-
-        response = self.session.get(absolute_url, params=params, proxies=proxies)
-        return response
+            proxies = {
+                'http': f'http://{proxy}',
+                'https': f'http://{proxy}',
+            }
+            self.session.proxies.update(proxies)
